@@ -33,3 +33,18 @@ htmlcov/
 # Temporary files
 *.tmp
 temp/%                                                                                                                                      
+
+
+# Xcode
+.build/
+tmp/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+xcuserdata/
+DerivedData/
+Pods/
