@@ -29,6 +29,17 @@ struct LauncherApp: Identifiable {
     let bundleID: String?
 
     var id: String { name }
+
+    /// `MacCountdownWidget` shows as `Countdown`.
+    var displayName: String {
+        var n = name
+        if n.hasPrefix("Mac") { n.removeFirst(3) }
+        for suffix in ["Widgets", "Widget"] where n.hasSuffix(suffix) {
+            n.removeLast(suffix.count)
+            break
+        }
+        return n.isEmpty ? name : n
+    }
 }
 
 /// Lists every app project next to this one and tracks which are running.
@@ -167,7 +178,7 @@ struct AppRow: View {
                     icon
                         .resizable()
                         .frame(width: 22, height: 22)
-                    Text(app.name)
+                    Text(app.displayName)
                         .lineLimit(1)
                     Spacer(minLength: 0)
                     if isRunning {
@@ -182,12 +193,12 @@ struct AppRow: View {
             .buttonStyle(.plain)
             .disabled(app.url == nil)
             .opacity(app.url == nil ? 0.35 : 1)
-            .help(app.url == nil ? "\(app.name) is not installed" : "Open \(app.name)")
+            .help(app.url == nil ? "\(app.displayName) is not installed" : "Open \(app.displayName)")
 
             Button(action: quit) { Image(systemName: "power") }
                 .buttonStyle(CapsuleControlButtonStyle(tint: RowPalette.control, isOn: isRunning))
                 .disabled(!isRunning)
-                .help("Quit \(app.name)")
+                .help("Quit \(app.displayName)")
         }
     }
 
