@@ -176,7 +176,6 @@ struct AppRow: View {
             Button(action: launch) {
                 HStack(spacing: 8) {
                     icon
-                        .resizable()
                         .frame(width: 22, height: 22)
                     Text(app.displayName)
                         .lineLimit(1)
@@ -202,9 +201,31 @@ struct AppRow: View {
         }
     }
 
-    private var icon: Image {
-        guard let url = app.url else { return Image(systemName: "app.dashed") }
-        return Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+    @ViewBuilder private var icon: some View {
+        if let url = app.url, Self.hasOwnIcon(url) {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                .resizable()
+        } else {
+            let tile = AppTile.forName(app.displayName)
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(tile.color)
+                .overlay {
+                    if let symbol = tile.symbol {
+                        Image(systemName: symbol)
+                    } else {
+                        Text(app.displayName.prefix(1))
+                    }
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+
+    /// The sibling apps ship no icon, so NSWorkspace would hand back the
+    /// generic grid square for them.
+    private static func hasOwnIcon(_ url: URL) -> Bool {
+        let info = Bundle(url: url)?.infoDictionary
+        return info?["CFBundleIconFile"] != nil || info?["CFBundleIconName"] != nil
     }
 }
 
@@ -255,5 +276,20 @@ struct CapsuleControlButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         CapsuleControlChrome(isOn: isOn, tint: tint, isPressed: configuration.isPressed, label: configuration.label)
+    }
+}
+
+/// Stand-in icon for an app that has none of its own.
+struct AppTile {
+    let symbol: String?
+    let color: Color
+
+    static func forName(_ name: String) -> AppTile {
+        switch name {
+        case "Countdown": return AppTile(symbol: "timer", color: Color(red: 1.0, green: 0.624, blue: 0.039))
+        case "Record": return AppTile(symbol: "record.circle", color: Color(red: 1.0, green: 0.2196, blue: 0.2353))
+        case "Shoshin": return AppTile(symbol: "circle.dashed", color: Color(red: 0.188, green: 0.69, blue: 0.78))
+        default: return AppTile(symbol: nil, color: Color(nsColor: .systemGray))
+        }
     }
 }
