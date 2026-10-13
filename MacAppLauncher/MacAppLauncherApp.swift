@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @main
@@ -48,17 +49,17 @@ final class AppCatalog: ObservableObject {
         URL(fileURLWithPath: UserDefaults.standard.string(forKey: Self.rootKey) ?? Self.defaultRoot)
     }
 
-    private var observers: [NSObjectProtocol] = []
+    private var runningWatch: AnyCancellable?
 
     init() {
-        let center = NSWorkspace.shared.notificationCenter
-        for name in [NSWorkspace.didLaunchApplicationNotification,
-                     NSWorkspace.didTerminateApplicationNotification] {
-            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                guard let self else { return }
-                Task { @MainActor in self.refreshRunning() }
-            })
-        }
+        // KVO on `runningApplications`, not the didLaunch/didTerminate
+        // notifications: those are not posted for LSUIElement apps, and every
+        // app this launcher lists is one.
+        runningWatch = NSWorkspace.shared.publisher(for: \.runningApplications)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] apps in
+                self?.running = Set(apps.compactMap(\.bundleIdentifier))
+            }
         reload()
     }
 
