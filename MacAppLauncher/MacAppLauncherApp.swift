@@ -55,7 +55,8 @@ final class AppCatalog: ObservableObject {
         for name in [NSWorkspace.didLaunchApplicationNotification,
                      NSWorkspace.didTerminateApplicationNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.refreshRunning() }
+                guard let self else { return }
+                Task { @MainActor in self.refreshRunning() }
             })
         }
         reload()
