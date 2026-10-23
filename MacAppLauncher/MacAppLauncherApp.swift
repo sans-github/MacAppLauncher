@@ -103,7 +103,10 @@ final class AppCatalog: ObservableObject {
 
     func launch(_ app: LauncherApp) {
         guard let url = app.url else { return }
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        // Apps that support it open their menu bar panel on launch; others ignore the flag.
+        let config = NSWorkspace.OpenConfiguration()
+        config.arguments = ["--open-panel"]
+        NSWorkspace.shared.openApplication(at: url, configuration: config)
     }
 
     func quit(_ app: LauncherApp) {
