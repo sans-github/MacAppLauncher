@@ -86,8 +86,8 @@ final class AppCatalog: ObservableObject {
                 guard let project else { return nil }
                 let name = (project as NSString).deletingPathExtension
                 guard name != Self.selfName else { return nil }
-                let url = Self.installedURL(for: name)
-                return LauncherApp(name: name, url: url, bundleID: url.flatMap { Bundle(url: $0)?.bundleIdentifier })
+                guard let url = Self.installedURL(for: name) else { return nil }
+                return LauncherApp(name: name, url: url, bundleID: Bundle(url: url)?.bundleIdentifier)
             }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         refreshRunning()
