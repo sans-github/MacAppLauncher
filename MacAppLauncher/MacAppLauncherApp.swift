@@ -205,8 +205,8 @@ struct AppRow: View {
     }
 
     @ViewBuilder private var icon: some View {
-        if let url = app.url, Self.hasOwnIcon(url) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+        if let url = app.url, let own = Self.ownIcon(url) {
+            Image(nsImage: own)
                 .resizable()
         } else {
             let tile = AppTile.forName(app.displayName)
@@ -224,11 +224,13 @@ struct AppRow: View {
         }
     }
 
-    /// The sibling apps ship no icon, so NSWorkspace would hand back the
-    /// generic grid square for them.
-    private static func hasOwnIcon(_ url: URL) -> Bool {
-        let info = Bundle(url: url)?.infoDictionary
-        return info?["CFBundleIconFile"] != nil || info?["CFBundleIconName"] != nil
+    /// Read from the bundle rather than NSWorkspace, which returns the system
+    /// tinted rendition when the icon style is Tinted. Nil for apps that ship
+    /// no icon, where NSWorkspace would give the generic grid square.
+    private static func ownIcon(_ url: URL) -> NSImage? {
+        guard let bundle = Bundle(url: url), let info = bundle.infoDictionary else { return nil }
+        let name = (info["CFBundleIconName"] ?? info["CFBundleIconFile"]) as? String
+        return name.flatMap { bundle.image(forResource: ($0 as NSString).deletingPathExtension) }
     }
 }
 
