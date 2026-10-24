@@ -27,6 +27,8 @@ struct LauncherApp: Identifiable {
     /// Nil when the project has never been installed.
     let url: URL?
     let bundleID: String?
+    /// Largest PNG in the repo's `AppIcon.appiconset`, nil when the repo has none.
+    let repoIcon: URL?
 
     var id: String { name }
 
@@ -87,7 +89,8 @@ final class AppCatalog: ObservableObject {
                 let name = (project as NSString).deletingPathExtension
                 guard name != Self.selfName else { return nil }
                 guard let url = Self.installedURL(for: name) else { return nil }
-                return LauncherApp(name: name, url: url, bundleID: Bundle(url: url)?.bundleIdentifier)
+                return LauncherApp(name: name, url: url, bundleID: Bundle(url: url)?.bundleIdentifier,
+                                   repoIcon: Self.repoIcon(in: folder, name: name))
             }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         refreshRunning()
@@ -123,6 +126,22 @@ final class AppCatalog: ObservableObject {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         UserDefaults.standard.set(url.path, forKey: Self.rootKey)
         reload()
+    }
+
+    /// Xcode puts a target's sources, and its asset catalog, in a folder named
+    /// after the project: `MacRecordWidget/OnAir/Assets.xcassets`.
+    private static func repoIcon(in folder: URL, name: String) -> URL? {
+        let fm = FileManager.default
+        let sources = folder.appendingPathComponent(name)
+        let catalogs = ((try? fm.contentsOfDirectory(atPath: sources.path)) ?? []).filter { $0.hasSuffix(".xcassets") }
+        let pngs = catalogs.flatMap { catalog -> [URL] in
+            let set = sources.appendingPathComponent(catalog).appendingPathComponent("AppIcon.appiconset")
+            return ((try? fm.contentsOfDirectory(atPath: set.path)) ?? [])
+                .filter { $0.hasSuffix(".png") }
+                .map { set.appendingPathComponent($0) }
+        }
+        let size = { (url: URL) in (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0 }
+        return pngs.max { size($0) < size($1) }
     }
 
     private static func installedURL(for name: String) -> URL? {
@@ -205,20 +224,13 @@ struct AppRow: View {
     }
 
     @ViewBuilder private var icon: some View {
-        if let url = app.url, let own = Self.ownIcon(url) {
-            Image(nsImage: own)
+        if let image = app.repoIcon.flatMap(NSImage.init(contentsOf:)) ?? app.url.flatMap(Self.ownIcon) {
+            Image(nsImage: image)
                 .resizable()
         } else {
-            let tile = AppTile.forName(app.displayName)
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(tile.color)
-                .overlay {
-                    if let symbol = tile.symbol {
-                        Image(systemName: symbol)
-                    } else {
-                        Text(app.displayName.prefix(1))
-                    }
-                }
+                .fill(Color(nsColor: .systemGray))
+                .overlay { Text(app.displayName.prefix(1)) }
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white)
         }
@@ -281,20 +293,5 @@ struct CapsuleControlButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         CapsuleControlChrome(isOn: isOn, tint: tint, isPressed: configuration.isPressed, label: configuration.label)
-    }
-}
-
-/// Stand-in icon for an app that has none of its own.
-struct AppTile {
-    let symbol: String?
-    let color: Color
-
-    static func forName(_ name: String) -> AppTile {
-        switch name {
-        case "Countdown": return AppTile(symbol: "timer", color: Color(red: 1.0, green: 0.624, blue: 0.039))
-        case "Record": return AppTile(symbol: "record.circle", color: Color(red: 1.0, green: 0.2196, blue: 0.2353))
-        case "Shoshin": return AppTile(symbol: "circle.dashed", color: Color(red: 0.188, green: 0.69, blue: 0.78))
-        default: return AppTile(symbol: nil, color: Color(nsColor: .systemGray))
-        }
     }
 }

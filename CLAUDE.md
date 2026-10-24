@@ -15,6 +15,8 @@ One file, `MacAppLauncher/MacAppLauncherApp.swift`:
   folder button, stored in UserDefaults `projectsRoot`). Each sibling folder with an `.xcodeproj` becomes one
   entry, named after the project, not the folder (`MacSoshinWidgets` builds `Shoshin.app`). This app is excluded.
 - Entries resolve to `/Applications/<name>.app` or `~/Applications/<name>.app`; uninstalled projects are hidden.
+- Icons come from the repo (`<folder>/<project>/*.xcassets/AppIcon.appiconset`, largest PNG), then the installed
+  bundle (read directly, since NSWorkspace returns the tinted rendition), then a gray initial tile.
 - Running state comes from `NSWorkspace` launch/terminate notifications, keyed by bundle ID.
 - Quit uses `NSRunningApplication.terminate()` (polite quit; the app may still prompt to save).
 - Styles (`RowPalette`, `CapsuleControlButtonStyle`) are a trimmed copy of MacRecordWidget's: #007AFF lit
